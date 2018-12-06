@@ -27,7 +27,20 @@ ui <- fluidPage(theme = shinytheme("cyborg"),
                                     sidebarLayout(
                                       sidebarPanel(
                                         sliderInput("peak", "Peaked at at least:",
-                                                    min = 1, max = 100, value = 10)
+                                                    min = 1, max = 100, value = 10),
+                                        helpText(HTML('<p style="color:white; font-size: 13pt">
+                                                      The table at right displays Ariana\'s songs
+                                                      that managed to hit the Billboard Hot 100 chart.
+                                                      We see from this that My Everything undoubtedly
+                                                      performed the best in terms of Top 10s; however,
+                                                      it was not only the album with the most songs, but
+                                                      it was also a collaboration-heavy album in comparison to
+                                                      the others (and it is important to note that all of
+                                                      the Top 10 songs in the album were collaborations).
+                                                      In terms of Hot 100s, Sweetener takes the cake (and
+                                                      with only one collaboration no less).
+                                                      </p>')
+                                      )
                                       ),
                                       mainPanel(
                                         tableOutput("charts_kable")
@@ -47,7 +60,15 @@ ui <- fluidPage(theme = shinytheme("cyborg"),
                                         selectInput("album_p2", "Filter by album?", 
                                                     choices = c("All", "Yours Truly", "My Everything",
                                                                 "Dangerous Woman", "Sweetener", "Single"),
-                                                    selected = NULL)
+                                                    selected = NULL),
+                                      helpText(HTML('<p style="color:white; font-size: 13pt">
+                                                    The table at right displays the number of words in
+                                                    each of Ariana\'s songs and whether they hit the
+                                                    Billboard Hot 100 chart. Even while controlling for
+                                                    albums, there seems to be little predictive power in
+                                                    the number of words in a song in regards to how
+                                                    well-received it will be.
+                                                    </p>'))
                                       ),
                                       mainPanel(
                                         tableOutput("numwords_kable")
@@ -64,8 +85,21 @@ ui <- fluidPage(theme = shinytheme("cyborg"),
                                     titlePanel("Maybe Some Things Aren't Better Left Unsaid"),
                                     sidebarLayout(
                                       sidebarPanel(
-                                        checkboxInput("albums", "Compare albums")
-                                      ),
+                                        checkboxInput("albums", "Compare albums"),
+                                        helpText(HTML('<p style="color:white; font-size: 13pt">
+                                                      The boxplot at right demonstrats that, aside
+                                                      from Sweetener, Ariana\'s more lexically diverse
+                                                      songs tend to do better in regards to getting on 
+                                                      the Billboard chart. This, coupled with the fact
+                                                      that so many of the songs on Sweetener (arguably
+                                                      Ariana\'s most meaningful and sentimental album
+                                                      to date) easily hit the charts, could be indicative
+                                                      of the fact that Ariana\'s audience is ready for her
+                                                      to disucss more mature topics and display a broader
+                                                      range of emotins through her music.
+                                                      </p>')
+                                        )
+                                        ),
                                       mainPanel(
                                         plotlyOutput("diversity_plot")
                                       )
@@ -87,8 +121,20 @@ ui <- fluidPage(theme = shinytheme("cyborg"),
                                         selectInput("album_p4", "Filter by album?",
                                                     choices = c("All", "Yours Truly", "My Everything",
                                                                 "Dangerous Woman", "Sweetener", "Single"),
-                                                    selected = NULL)
-                                        ),
+                                                    selected = NULL),
+                                        helpText(HTML('<p style="color:white; font-size: 13pt">
+                                                      The bar graph at right shows the most frequently used
+                                                      words in Ariana\'s songs. We see that the words 
+                                                      "yeah" and "love" take the cake, which is
+                                                      unsurprising given the focal points of her
+                                                      first three albums (Yours Truly - falling
+                                                      in love, My Everything - heartache and heartbreak,
+                                                      and Dangerous Woman - taking ownership or her
+                                                      sexuality). As you look specifcally at each 
+                                                      album, the distinction between them becomes clearer.
+                                                      </p>')
+                                        )
+                                      ),
                                         mainPanel(
                                           plotlyOutput("words_plot")
                                         )
@@ -110,7 +156,15 @@ ui <- fluidPage(theme = shinytheme("cyborg"),
                                         selectInput("album_p5", "Select an album",
                                                     choices = c("Yours Truly", "My Everything",
                                                                 "Dangerous Woman", "Sweetener", "Single"),
-                                                    selected = NULL)
+                                                    selected = NULL),
+                                        helpText(HTML('<p style="color:white; font-size: 13pt">
+                                                      The bar plot at right displays the most important
+                                                      words (according to the TF-IDF statistical method)
+                                                      in each album are. This most clearly rings true
+                                                      with My Everything, which centers on regret, apologies,
+                                                      toxic relationships, and general heartbreak.
+                                                      </p>')
+                                        )
                                       ),
                                       mainPanel(
                                         plotlyOutput("important_plot")
@@ -132,7 +186,7 @@ server <- function(input, output) {
     p <- ari_df %>%
       unnest_tokens(word, lyrics) %>% 
       group_by(song, top_chart, album) %>% 
-      summarize(num_words = n(song)) %>% 
+      summarize(num_words = n()) %>% 
       arrange(desc(num_words)) %>% 
       ungroup(num_words, song) %>%
       mutate(billboard = top_chart) %>% 
