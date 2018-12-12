@@ -1,3 +1,5 @@
+# Imports necessary libraries
+
 library(rvest)
 library(stringr)
 library(tidyverse)
@@ -5,12 +7,9 @@ library(snakecase)
 library(knitr)
 library(kableExtra)
 library(formattable)
-library(tidy)
 library(lettercase)
 library(rapportools)
 library(tools)
-library(wordcloud2)
-library(gridExtra)
 library(plotly)
 library(tidytext)
 library(yarrr)
@@ -89,7 +88,7 @@ get_chart_title <- function(section) {
 # as above.
 
 get_chart_peak <- function(section) {
-  read_html(paste("https://www.billboard.com/music/ariana-grande/chart-history/hot-100/", section)) %>% 
+  read_html(paste("https://www.billboard.com/music/ariana-grande/chart-history/hot-100/", section, sep="")) %>% 
     html_nodes(".artist-section--chart-history__title-list__title__text--peak-rank") %>% 
     html_text %>% 
     str_remove_all("(.*)#") %>% 
@@ -98,15 +97,22 @@ get_chart_peak <- function(section) {
     trimws()
 }
 
+# Construct array of album titles for use later
 
 albums <- c("Yours Truly", "My Everything", "Dangerous Woman", "Sweetener", "Single")
+
+# Get track list for each album
 
 yours_truly <- get_tracklist(albums[1], 12)
 my_everything <- get_tracklist(albums[2], 15, 1)
 dangerous_woman <- get_tracklist(albums[3], 16)
 sweetener <- get_tracklist(albums[4], 15, 1)
 
+# construct array of songs for use later
+
 song <- c(yours_truly, my_everything, dangerous_woman, sweetener, "thank u, next")
+
+# Construct data frame of charted songs using helper functions
 
 charted_songs <- unlist(sapply(1:4, get_chart_title)) %>% 
   tolower() %>% 
@@ -148,5 +154,7 @@ ari_df <- data.frame(song) %>%
            album == "Sweetener" ~ 4,
            TRUE ~ 0),
          album = fct_relevel(album, albums))
+
+# Write to RDS file inside Shiny app directory to use for server
 
 write_rds(ari_df, "ari/ari_df")
