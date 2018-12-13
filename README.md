@@ -1,6 +1,6 @@
 # Arianalysis
 
-Website can be found here: arianalysis.github.io
+Website can be found here: https://arianalysis.github.io/
 
 This project provides a quantitative means by which to compare Ariana Grande's albums, songs, and lyrics, and hopefully provide predictive power in regards to landing on the Billboard Hot 100 chart.
 
