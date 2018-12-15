@@ -3,16 +3,13 @@
 library(rvest)
 library(stringr)
 library(tidyverse)
-library(snakecase)
 library(knitr)
 library(kableExtra)
 library(formattable)
-library(lettercase)
-library(rapportools)
-library(tools)
 library(plotly)
 library(tidytext)
-library(yarrr)
+library(rapportools)
+library(snakecase)
 
 # Uses an HTML parser to read in tracklist from Ariana's albums 
 # from Genius. Only included the first {tracks} tracks and 
@@ -140,7 +137,7 @@ ari_df <- data.frame(song) %>%
     !is.na(peak)  ~ "Charted",
     TRUE ~ "Uncharted"
   )) %>% 
-  mutate(top_chart = case_when(
+  mutate(billboard = case_when(
     peak %in% 1:10 ~ "Top 10",
     peak %in% 11:100 ~ "Top 100",
     TRUE ~ "Uncharted"
@@ -158,3 +155,85 @@ ari_df <- data.frame(song) %>%
 # Write to RDS file inside Shiny app directory to use for server
 
 write_rds(ari_df, "ari/ari_df")
+
+# Start with data frame, unnest lyrics
+# into indivdual words, find number of
+# words for each song and arrange in 
+# descending order to get table of songs
+# with number of words and write to RDS
+
+numwords <- ari_df %>%
+  unnest_tokens(word, lyrics) %>% 
+  group_by(song, billboard, album) %>% 
+  mutate(num_words = n(song)) %>% 
+  arrange(desc(num_words)) %>% 
+  ungroup(num_words, song)
+
+write_rds(numwords, "ari/numwords")
+
+# Find lexical diversity by unnesting,
+# removing stop words, grouping by song/album,
+# and finding the number of distinct words
+# for each grouping and then write to RDS
+
+lexical_diversity <- ari_df %>% 
+  unnest_tokens(word, lyrics) %>% 
+  anti_join(stop_words) %>% 
+  group_by(song, album) %>% 
+  mutate(word_count = n_distinct(word)) %>% 
+  ungroup() %>% 
+  select(-peak, -word) %>% 
+  unique() %>% 
+  arrange(desc(word_count))
+
+write_rds(lexical_diversity, "ari/lexical_diversity")
+
+# Unnest data frame to find all words,
+# remove stop words, then find unique
+# words in order to get most frequent
+# words used, and write to RDS
+
+words <- ari_df %>%
+  unnest_tokens(word, lyrics) %>%
+  anti_join(stop_words) %>%
+  unique()
+
+write_rds(words, "ari/words")
+
+# Find important words by unnesting,
+# finding unique words, filtering out
+# stop/short words, and then applying
+# bind_tf_idf and arrange in descending order
+# (then filter out some meaningless words I noticed)
+# and allow user to select slice that gets selected
+
+important_words <- ari_df %>%
+  unnest_tokens(word, lyrics) %>% 
+  unique() %>%
+  filter(nchar(word) > 3) %>% 
+  anti_join(stop_words) %>% 
+  count(album, word, sort = TRUE) %>% 
+  bind_tf_idf(word, album, n) %>% 
+  arrange(desc(tf_idf)) %>% 
+  filter(str_detect(word, "it") == FALSE) %>% 
+  filter(str_detect(word, "you") == FALSE) %>% 
+  filter(str_detect(word, "can") == FALSE) %>% 
+  filter(str_detect(word, "ooh") == FALSE) %>%
+  filter(str_detect(word, "dont") == FALSE) %>% 
+  filter(str_detect(word, "each") == FALSE) %>% 
+  group_by(album) 
+
+write_rds(important_words, "ari/important_words")
+
+# Reconstruct data frame without
+# stop words and with sentiments
+# attached to each word to get 
+# starting code for positivity and 
+# write to RDS
+
+positivity <- ari_df %>%
+  unnest_tokens(word, lyrics) %>% 
+  anti_join(stop_words) %>% 
+  inner_join(get_sentiments("bing"))
+
+write_rds(positivity, "ari/positivity")

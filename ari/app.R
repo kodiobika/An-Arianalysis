@@ -14,6 +14,11 @@ library(plotly)
 # Reads in data from RDS file to manipulate in server
 
 ari_df <- read_rds("ari_df")
+numwords <- read_rds("numwords")
+lex_div <- read_rds("lexical_diversity")
+freq_words <- read_rds("words")
+imp_words <- read_rds("important_words")
+positivity <- read_rds("positivity")
 
 # Creates user interface object with "cyborg" theme
 
@@ -108,7 +113,10 @@ ui <- shinyUI(bootstrapPage(theme = shinytheme("cyborg"),
                                     helpText(HTML('<h2 class="display-3" style="color:pink;">The Length is Coming</h2>')),
                                     sidebarLayout(
                                       sidebarPanel(
-                                        checkboxInput("album_p2", "Compare albums instead"),
+                                        selectInput("ind_var_p2", "Select a variable",
+                                                               choices = c("Billboard Chart Level" = "chart_p2",
+                                                                           "Albums" = "album_p2"),
+                                                               selected = NULL),
                                       helpText(HTML('<p style="color:white; font-size: 13pt">
                                                     The boxplot at right displays the statistical breakdown
                                                     for number of words for songs based on Billboard status
@@ -128,12 +136,15 @@ ui <- shinyUI(bootstrapPage(theme = shinytheme("cyborg"),
                                     helpText(HTML('<h2 class="display-3" style="color:pink;">Maybe Some Things Aren\'t Better Left Unsaid</h2>')),
                                     sidebarLayout(
                                       sidebarPanel(
-                                        checkboxInput("albums_p3", "Compare albums instead"),
+                                        selectInput("ind_var_p3", "Select a variable",
+                                                    choices = c("Billboard Chart Level" = "chart_p3",
+                                                                "Albums" = "album_p3"),
+                                                    selected = NULL),
                                         helpText(HTML('<p style="color:white; font-size: 13pt">
                                                       The boxplot at right displays the statistical breakdown
                                                       for lexical diversity (number of unique words) based on 
-                                                      Billboard status and album. More lexically diverse tracks
-                                                      also tend to do better.
+                                                      Billboard status and album. It seems that more lexically
+                                                      diverse tracks also tend to do better on the charts.
                                                       </p>'))),
                                       mainPanel(
                                         plotlyOutput("diversity_plot")))),
@@ -201,9 +212,9 @@ ui <- shinyUI(bootstrapPage(theme = shinytheme("cyborg"),
                                     helpText(HTML('<h2 class="display-3" style="color:pink;">Was Sweetener Really All That Sweet?</h2>')),
                                     sidebarLayout(
                                       sidebarPanel(
-                                        selectInput("ind_var", "Select an independent variable",
-                                                    choices = c("Billboard Chart Level" = "chart",
-                                                                "Albums" = "albums_p6"),
+                                        selectInput("ind_var_p6", "Select a variable",
+                                                    choices = c("Billboard Chart Level" = "chart_p6",
+                                                                "Albums" = "album_p6"),
                                                     selected = NULL),
                                         helpText(HTML('<p style="color:white; font-size: 13pt">
                                                       Unsurprisingly, positive songs tend to have a
@@ -223,7 +234,7 @@ ui <- shinyUI(bootstrapPage(theme = shinytheme("cyborg"),
                                           <hr style="border-color: white">
                                           <p style="color: white; font-size:20px">Hi! My name is Kodi Obika
                                           and I\'m a current freshman at Harvard University and (if it wasn\'t
-                                          obvious, a big Ariana Grande fan). I plan on
+                                          obvious) a big Ariana Grande fan. I plan on
                                           studying Applied Math with a focus in Computer Science and/or
                                           Music.</p>')))))
 
@@ -234,7 +245,7 @@ server <- function(input, output) {
     
     # Start with data frame, filter based on user-selected peak,
     # Arrange by album and peak and then construct kable (table) 
-    # displaying results
+    # displaying results.
     
     ari_df %>%
       filter(peak <= input$peak) %>% 
@@ -255,124 +266,81 @@ server <- function(input, output) {
   
   output$numwords_plot <- renderPlotly({
     
-    # Save input as a reactive object 
+    # Use conditionals to choose independent
+    # variables based on user input
     
-    x <- reactive({input$album_p2})
+    if (input$ind_var_p2 == "chart_p2") {
+      numwords <- numwords %>% 
+        ggplot(aes(billboard, num_words))
+    }
     
-    # Start with data frame, unnest lyrics
-    # into indivdual words, find number of
-    # words for each song and arrange in 
-    # descending order
-    
-    p <- ari_df %>%
-      unnest_tokens(word, lyrics) %>% 
-      group_by(song, top_chart, album) %>% 
-      summarize(num_words = n()) %>% 
-      arrange(desc(num_words)) %>% 
-      ungroup(num_words, song) %>%
-      mutate(billboard = top_chart) %>% 
-      select(-top_chart)
-    
-    # If checkbox is selected, map album
-    # against number of words
-    
-    if(x()) {
-      p <- p %>% 
+    else {
+      numwords <- numwords %>% 
         ggplot(aes(album, num_words))
     }
     
-    # Otherwise, map billboard rank
-    # against number of words
+    # Create plotly boxplot with results to
+    # compare across different categories in
+    # variable
     
-    else {
-      p <- p %>% 
-        ggplot(aes(billboard, num_words)) 
-    }
-    
-    # Create plot with results as output
-    
-    p <- p + geom_boxplot(color = "black", fill = "pink") +
+    numwords <- numwords + 
+      geom_boxplot(color = "black", fill = "pink") +
       theme_dark() + 
       labs(title = "Comparing Song Wordiness",
            x = NULL,
            y = "Number of Words")
     
-    ggplotly(p)
+    ggplotly(numwords)
     
   })
   
   output$diversity_plot <- renderPlotly({
     
-    # Save input as reactive object 
+    # Use conditionals to choose independent
+    # variables based on user input
     
-    x <- reactive({input$albums_p3})
-    
-    # Find lexical diversity by unnesting,
-    # removing stop words, grouping by song/album,
-    # and finding the number of distinct words
-    # for each grouping
-    
-    lexical_diversity <- ari_df %>% 
-      unnest_tokens(word, lyrics) %>% 
-      anti_join(stop_words) %>% 
-      group_by(song, album) %>% 
-      mutate(word_count = n_distinct(word)) %>% 
-      ungroup() %>% 
-      select(-peak, -word) %>% 
-      unique() %>% 
-      arrange(desc(word_count))
-    
-    # If checkbox is selected, map against album
-    
-    if(x()) {
-      p <- ggplot(lexical_diversity, aes(album, word_count)) 
+    if (input$ind_var_p3 == "chart_p3") {
+      lex_div <- lex_div %>% 
+        ggplot(aes(billboard, word_count)) 
     }
-    
-    # Otherwise, map against Billboard status
     
     else {
-      p <- ggplot(lexical_diversity, aes(top_chart, word_count)) 
+      lex_div <- lex_div %>% 
+        ggplot(aes(album, word_count)) 
     }
     
-    # Create plot with results as output
+    # Create plotly boxplot with results to
+    # compare across different categories in
+    # variable
     
-    p <- p + geom_boxplot(color = "black", fill = "pink") +
+    lex_div <- lex_div + 
+      geom_boxplot(color = "black", fill = "pink") +
       theme_dark() +
       labs(title = "Comparing Lexical Diversity",
            x = NULL,
            y = "Number of Unique Words")
     
     
-    ggplotly(p)
+    ggplotly(lex_div)
     
   })
   
   output$words_plot <- renderPlotly({
     
-    # Unnest data frame to find all words,
-    # remove stop words, then find unique
-    # words
-    
-    words <- ari_df %>%
-      unnest_tokens(word, lyrics) %>%
-      anti_join(stop_words) %>%
-      unique()
-    
-    # If an album is select,
-    # filter by it
+    # Decide how to filter by album
+    # based on user input
     
     if (input$album_p4 != "All") {
-      words <- words %>% 
+      freq_words <- freq_words %>% 
         filter(album == input$album_p4)
     }
     
-    # Construct plot by finding 
+    # Construct plotly by finding 
     # count of each word, putting data
     # in descending order, then finding
-    # the first "n" values of the arranged
-    # data
+    # the first "n" values of the arranged data
     
-    p <- words %>% 
+    freq_words <- freq_words %>% 
       count(word) %>% 
       arrange(desc(n)) %>% 
       head(input$n) %>% 
@@ -384,43 +352,19 @@ server <- function(input, output) {
       labs(title = "Comparing Word Frequency",
            x = NULL, y = "Word Frequency")
     
-    # Create plot with results as output
-    
-    ggplotly(p)
+    ggplotly(freq_words)
     
   })
   
   output$important_plot <- renderPlotly({
     
-    # Find important words by unnesting,
-    # finding unique words, filtering out
-    # stop/short words, and then applying
-    # bind_tf_idf and arrange in descending order
-    # (then filter out meaningless words) and
-    # allow user to select slice that gets selected
+    # Filter based on user selected album and
+    # then create plotly bar graph with results to
+    # compare significance of top n words
     
-    important_words <- ari_df %>%
-      unnest_tokens(word, lyrics) %>% 
-      unique() %>%
-      filter(nchar(word) > 3) %>% 
-      anti_join(stop_words) %>% 
-      count(album, word, sort = TRUE) %>% 
-      bind_tf_idf(word, album, n) %>% 
-      arrange(desc(tf_idf)) %>% 
-      filter(str_detect(word, "it") == FALSE) %>% 
-      filter(str_detect(word, "you") == FALSE) %>% 
-      filter(str_detect(word, "can") == FALSE) %>% 
-      filter(str_detect(word, "ooh") == FALSE) %>%
-      filter(str_detect(word, "dont") == FALSE) %>% 
-      filter(str_detect(word, "each") == FALSE) %>% 
-      group_by(album) %>% 
+    imp_words <- imp_words %>%
       slice(1:input$range) %>% 
-      arrange(desc(tf_idf))
-    
-    # Filter based on user selected album
-    # and then construct barplot
-    
-    p <- important_words %>% 
+      arrange(desc(tf_idf)) %>% 
       filter(album == input$album_p5) %>% 
       ggplot(aes(reorder(word, tf_idf), tf_idf)) +
       geom_bar(fill = "pink", color="black", stat="identity") +
@@ -428,40 +372,26 @@ server <- function(input, output) {
       labs(title = "Comparing Word Significance",
            x = NULL, y = "Word Importance (TF-IDF)")
     
-    # Create plot with results as output
-    
-    ggplotly(p)
+    ggplotly(imp_words)
     
   })
   
   output$sentiment <- renderPlotly({
     
-    # Reconstruct data frame without
-    # stop words and with sentiments
-    # attached to each word
+    # Use conditionals to choose independent
+    # variables based on user input
     
-    positivity <- ari_df %>%
-      unnest_tokens(word, lyrics) %>% 
-      anti_join(stop_words) %>% 
-      inner_join(get_sentiments("bing"))
-    
-    # If user selects chart, count sentiment
-    # for each Billboard level
-    
-    if (input$ind_var == "chart") {
+    if (input$ind_var_p6 == "chart_p6") {
       positivity <- positivity %>% 
-        count(sentiment, top_chart)
+        count(sentiment, billboard)
     }
-    
-    # Otherwise, count sentiment for
-    # each album
     
     else {
       positivity <- positivity %>% 
         count(sentiment, album)
     }
     
-    # Find percent positivity
+    # Afterwards find percent positivity
     # for whichever column was selected
     
     positivity <- positivity %>% 
@@ -471,9 +401,9 @@ server <- function(input, output) {
     # If chart, map Billboard level against
     # positivity
     
-    if (input$ind_var == "chart") {
+    if (input$ind_var_p6 == "chart_p6") {
       positivity <- positivity %>% 
-        ggplot(aes(top_chart, positivity))
+        ggplot(aes(billboard, positivity))
     }
     
     # Otherwise, map album against
@@ -484,21 +414,21 @@ server <- function(input, output) {
         ggplot(aes(album, positivity))
     }
     
-    # Construct barplot
+    # Construct plotly barplot to compare
+    # results
     
-    p <- positivity +
+    positivity <- positivity +
       geom_bar(fill = "pink", color = "black", stat="identity") +
       theme_dark() +
       labs(title = "Comparing Lyrical Positivity",
            x = NULL, y = "Percentage of Positive Words")
     
-    # Create plot with results as output
-    
-    ggplotly(p)
+    ggplotly(positivity)
     
   })
 }
 
-# Run the application 
+# Run application 
+
 shinyApp(ui = ui, server = server)
 
