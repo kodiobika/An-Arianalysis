@@ -11,7 +11,7 @@ library(tidytext)
 library(plotly)
 
 
-# Reads in data from RDS file to manipulate in server
+# Read in data from RDS files to utilize in server
 
 ari_df <- read_rds("ari_df")
 numwords <- read_rds("numwords")
