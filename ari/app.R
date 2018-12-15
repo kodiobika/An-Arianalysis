@@ -45,8 +45,8 @@ ui <- shinyUI(bootstrapPage(theme = shinytheme("cyborg"),
                               To address this question, as well as see what factors could distinguish songs of 
                               hers that hit the Billboard charts from those that don\'t, I decided to conduct 
                               an Arianalysis, or, in other words, an analysis of her songs, lyrics, 
-                              and albums. The analysis centers on song length, lexical diversity within songs 
-                              and albums, and most frequently used / important words in each album. I was 
+                              and albums. The analysis centers on factors like song wordiness, lexical diversity within songs 
+                              and albums, most frequently used / important words in each album, and percentage of positive lyrics. I was 
                               mainly inspired to undertake this project after reading this article 
                               (https://towardsdatascience.com/drake-using-natural-language-processing-to-understand-his-lyrics-49e54ace3662) 
                               in which a fellow data scientist used natural language processing to understand another artist, Drake\'s, lyrics.
